@@ -58,9 +58,13 @@ After the workflow:
 
 The sample contains four inquiries on purpose: two valid ones, one without an email address and one with an unknown country code (`XX`).
 
-| Valid inquiries (`Anfragen`) | Inquiries to check (`Prüfen`) |
-|---|---|
-| ![Anfragen sheet](screenshots/02-google-sheets-valid.png) | ![Prüfen sheet](screenshots/02-google-sheets-to-check.png) |
+Valid inquiries (`Anfragen`):
+
+![Anfragen sheet](screenshots/02-google-sheets-valid.png)
+
+Inquiries to check (`Prüfen`):
+
+![Prüfen sheet](screenshots/02-google-sheets-to-check.png)
 
 Summary email:
 
@@ -73,11 +77,17 @@ Summary email:
 - **Defensive mapping:** an unknown country code returns `200` with an empty result, so the mapping falls back to an empty country and the inquiry is marked `to_check`.
 - **Alerting:** if a production run fails, the Error Alert workflow sends an email with the error message and a link to the execution.
 
-I tested the alert by pointing the HTTP Request at an invalid host:
+I tested the alert by pointing the HTTP Request at an invalid host. The run stopped at the HTTP Request node:
 
-| Failed execution in n8n | Alert email |
-|---|---|
-| ![Executions](screenshots/04-executions-success-and-error.png) | ![Error alert](screenshots/06-error-alert-email.png) |
+![Failed execution in n8n](screenshots/05-error-execution.png)
+
+and the Error Alert workflow sent this email:
+
+![Error alert email](screenshots/06-error-alert-email.png)
+
+After restoring the correct host, the next run succeeded. Both runs are visible in the execution history:
+
+![Execution history](screenshots/04-executions-success-and-error.png)
 
 ## Run it yourself
 
