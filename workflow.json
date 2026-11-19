@@ -1,0 +1,781 @@
+{
+  "name": "Inquiry Intake",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "inquiries",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "f87dce7a-c8f4-448f-a6f4-6da849b0a97d",
+      "name": "Webhook",
+      "webhookId": "ff752425-942d-4acd-90d3-84cc14e0de42"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "body.inquiries",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1.1,
+      "position": [
+        224,
+        0
+      ],
+      "id": "75dba208-48a1-422f-ad8f-0277603b3979",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "74806e07-68e6-4e73-8f2c-f03f499eeb0b",
+              "name": "name",
+              "value": "={{ $json.name.trim().replace(/\\s+/g, ' ').toLowerCase().replace(/(^|\\s)\\S/g, c => c.toUpperCase()) }}",
+              "type": "string"
+            },
+            {
+              "id": "5277d704-6e2f-4a6f-9b6d-e031b0c522b4",
+              "name": "email",
+              "value": "={{ $json.email.trim().toLowerCase() }}",
+              "type": "string"
+            },
+            {
+              "id": "b83d82ff-b11d-4c69-9727-0e1c0d99341c",
+              "name": "in_germany_since",
+              "value": "={{ DateTime.fromFormat($json.in_germany_since, 'dd.MM.yyyy').toISODate() }}",
+              "type": "string"
+            },
+            {
+              "id": "c1fe3018-a23c-477b-a287-c58b926490ab",
+              "name": "submitted_at",
+              "value": "={{ DateTime.fromFormat($json.submitted_at, 'dd.MM.yyyy HH:mm', { zone: 'Europe/Berlin' }).toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "a51ddc39-c08b-4de7-99a4-50bce2820a47",
+              "name": "missing_documents",
+              "value": "={{ Object.entries($json.documents).filter(([k, v]) => !v).map(([k]) => k).join(', ') }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        336,
+        0
+      ],
+      "id": "fff946e3-30ba-412b-bb05-fd20c9f2a799",
+      "name": "Normalize"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.restcountries.com/countries/v5/codes.alpha_2/{{ $json.nationality }}?response_fields=names.common,region",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        560,
+        0
+      ],
+      "id": "7cce555f-021e-4caa-9e4a-6edaf411a716",
+      "name": "HTTP Request",
+      "retryOnFail": true,
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ { ...$('Normalize').item.json, country: $json.data?.objects?.[0]?.names?.common ?? '', region: $json.data?.objects?.[0]?.region ?? '' } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        704,
+        -96
+      ],
+      "id": "f4c9ffd5-aa28-4afa-a448-dc08af962d1a",
+      "name": "Add country"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ { ...$('Normalize').item.json, country: '', region: '' } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        704,
+        80
+      ],
+      "id": "5a4dba50-e3e9-4d37-a5ab-780140b3e6d7",
+      "name": "Unknown country"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d8bfaa12-6d54-4de5-ab3a-9064e051dd6c",
+              "name": "status",
+              "value": "={{ ($json.email && /^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test($json.email) && $json.country) ? 'valid' : 'to_check' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "include": "except",
+        "excludeFields": "documents",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        928,
+        80
+      ],
+      "id": "5fae4db5-048a-4448-b6d1-839eb6c957c9",
+      "name": "Status"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "eb8c50e9-62fa-4782-993f-73b80d56a3b5",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "valid",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        1152,
+        80
+      ],
+      "id": "67922806-bb02-4eda-ac75-15252fdad315",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Migrando Inquiry Demo",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Anfragen",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "nationality",
+              "displayName": "nationality",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "country",
+              "displayName": "country",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "in_germany_since",
+              "displayName": "in_germany_since",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "missing_documents",
+              "displayName": "missing_documents",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "submitted_at",
+              "displayName": "submitted_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "german_level",
+              "displayName": "german_level",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "documents",
+              "displayName": "documents",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "region",
+              "displayName": "region",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1344,
+        -32
+      ],
+      "id": "d83af107-3b94-4e19-b1d2-96a4de515196",
+      "name": "Save valid",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Migrando Inquiry Demo",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1766056671,
+          "mode": "list",
+          "cachedResultName": "Prüfen",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "nationality",
+              "displayName": "nationality",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "country",
+              "displayName": "country",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "in_germany_since",
+              "displayName": "in_germany_since",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "missing_documents",
+              "displayName": "missing_documents",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "submitted_at",
+              "displayName": "submitted_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "german_level",
+              "displayName": "german_level",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "documents",
+              "displayName": "documents",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "region",
+              "displayName": "region",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1376,
+        176
+      ],
+      "id": "21ec4fdc-2e38-4a9d-b69d-40272ae0173a",
+      "name": "Save to check",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldsToSummarize": {
+          "values": [
+            {
+              "field": "id"
+            }
+          ]
+        },
+        "fieldsToSplitBy": "status",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.summarize",
+      "typeVersion": 1.1,
+      "position": [
+        1088,
+        -96
+      ],
+      "id": "094cbcc0-8aa5-4fed-ae5f-ae37b40faa02",
+      "name": "Summarize"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1296,
+        -176
+      ],
+      "id": "2800df2e-dfa7-449c-9c1f-c41d6cc607cc",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "sendTo": "you@example.com",
+        "subject": "=Anfragen {{ $now.toFormat('dd.MM.yyyy') }}: Zusammenfassung",
+        "emailType": "text",
+        "message": "={{ $json.data.map(d => d.status + ': ' + d.count_id).join('\\n') }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1520,
+        -144
+      ],
+      "id": "bdc16693-de1c-4464-8000-ad84a242f6f1",
+      "name": "Send a message",
+      "credentials": {
+        "gmailOAuth2": {
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "body": {
+            "inquiries": [
+              {
+                "id": "A-1001",
+                "name": "  anna  KOWALSKI ",
+                "email": " Anna.Kowalski@Example.com ",
+                "nationality": "PL",
+                "in_germany_since": "01.03.2018",
+                "german_level": "B1",
+                "documents": {
+                  "passport": true,
+                  "residence_permit": true,
+                  "language_certificate": true
+                },
+                "submitted_at": "16.11.2026 09:12"
+              },
+              {
+                "id": "A-1002",
+                "name": "minho park",
+                "email": "minho.park@example.com",
+                "nationality": "KR",
+                "in_germany_since": "15.09.2021",
+                "german_level": "A2",
+                "documents": {
+                  "passport": true,
+                  "residence_permit": false,
+                  "language_certificate": false
+                },
+                "submitted_at": "16.11.2026 10:40"
+              },
+              {
+                "id": "A-1003",
+                "name": "Lucía Fernández",
+                "email": "",
+                "nationality": "AR",
+                "in_germany_since": "20.06.2016",
+                "german_level": "B2",
+                "documents": {
+                  "passport": true,
+                  "residence_permit": true,
+                  "language_certificate": true
+                },
+                "submitted_at": "16.11.2026 11:05"
+              },
+              {
+                "id": "A-1004",
+                "name": "Omar Haddad",
+                "email": "omar.haddad@example.com",
+                "nationality": "XX",
+                "in_germany_since": "05.11.2019",
+                "german_level": "B1",
+                "documents": {
+                  "passport": true,
+                  "residence_permit": true,
+                  "language_certificate": false
+                },
+                "submitted_at": "16.11.2026 13:27"
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Normalize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Add country",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Unknown country": {
+      "main": [
+        [
+          {
+            "node": "Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add country": {
+      "main": [
+        [
+          {
+            "node": "Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Summarize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Save valid",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Save to check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  }
+}

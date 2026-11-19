@@ -1,0 +1,56 @@
+{
+  "name": "Error Alert",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "189cdb85-07d9-4d72-8bea-45947012c759",
+      "name": "Error Trigger"
+    },
+    {
+      "parameters": {
+        "sendTo": "you@example.com",
+        "subject": "=n8n 실패: {{ $json.workflow.name }}",
+        "emailType": "text",
+        "message": "={{ $json.execution.error.message }}\n{{ $json.execution.url }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        224,
+        0
+      ],
+      "id": "2ee4177e-160a-4345-b984-d521e0b00a15",
+      "name": "Send a message",
+      "credentials": {
+        "gmailOAuth2": {
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  }
+}

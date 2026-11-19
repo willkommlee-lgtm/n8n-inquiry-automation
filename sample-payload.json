@@ -1,0 +1,44 @@
+{
+  "inquiries": [
+    {
+      "id": "A-1001",
+      "name": "  anna  KOWALSKI ",
+      "email": " Anna.Kowalski@Example.com ",
+      "nationality": "PL",
+      "in_germany_since": "01.03.2018",
+      "german_level": "B1",
+      "documents": { "passport": true, "residence_permit": true, "language_certificate": true },
+      "submitted_at": "16.11.2026 09:12"
+    },
+    {
+      "id": "A-1002",
+      "name": "minho park",
+      "email": "minho.park@example.com",
+      "nationality": "KR",
+      "in_germany_since": "15.09.2021",
+      "german_level": "A2",
+      "documents": { "passport": true, "residence_permit": false, "language_certificate": false },
+      "submitted_at": "16.11.2026 10:40"
+    },
+    {
+      "id": "A-1003",
+      "name": "Lucía Fernández",
+      "email": "",
+      "nationality": "AR",
+      "in_germany_since": "20.06.2016",
+      "german_level": "B2",
+      "documents": { "passport": true, "residence_permit": true, "language_certificate": true },
+      "submitted_at": "16.11.2026 11:05"
+    },
+    {
+      "id": "A-1004",
+      "name": "Omar Haddad",
+      "email": "omar.haddad@example.com",
+      "nationality": "XX",
+      "in_germany_since": "05.11.2019",
+      "german_level": "B1",
+      "documents": { "passport": true, "residence_permit": true, "language_certificate": false },
+      "submitted_at": "16.11.2026 13:27"
+    }
+  ]
+}
